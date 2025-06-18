@@ -1,12 +1,17 @@
 import React, { useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
-
+import { updateUserStart,updateUserSuccess, updateUserFailure } from '../redux/user/userSlice';
+import { useDispatch } from 'react-redux';
 export default function About() {
   const { currentUser } = useSelector((state) => state.user);
   const fileRef = useRef(null);
   const [image, setImage] = useState(currentUser.avatar);
   const [uploading, setUploading] = useState(false);
-
+  const [formData,setFormData] = useState({});
+  const dispatch = useDispatch();
+  const [updateSuccess,setUpdateSuccess] = useState(false);
+  const { error } = useSelector((state) => state.user);
+ 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -37,10 +42,51 @@ export default function About() {
     }
   };
 
+
+
+  const handleChange = (e)=>{
+    setFormData({...formData,[e.target.id]:e.target.value })
+  }
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    dispatch(updateUserStart());
+
+    const updatedData = {
+      ...formData,
+      avatar: image, // ✅ include uploaded image URL
+    };
+
+    const res = await fetch(`/api/user/update/${currentUser._id}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(updatedData) // ✅ FIXED
+    });
+
+    const data = await res.json();
+    if (data.success === false) {
+      dispatch(updateUserFailure(data.message || 'Update failed'));
+      return;
+    }
+
+    dispatch(updateUserSuccess(data)); // ✅ updates Redux state
+    setUpdateSuccess(true);
+  } catch (error) {
+    dispatch(updateUserFailure(error.message));
+  }
+};
+
+
+
+
+
   return (
     <div className='p-3 max-w-lg mx-auto'>
       <h1 className='text-3xl font-semibold text-center my-7'>Profile</h1>
-      <form className='flex flex-col gap-4'>
+      <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
         <input
           type='file'
           ref={fileRef}
@@ -53,11 +99,12 @@ export default function About() {
           className='rounded-full h-24 w-24 object-cover cursor-pointer self-center mt-2'
           src={image}
           alt='Profile'
+          
         />
         {uploading && <p className='text-center text-sm'>Uploading image...</p>}
-        <input className='border p-3 rounded-lg' type='text' placeholder='username' id='username' />
-        <input className='border p-3 rounded-lg' type='email' placeholder='email' id='email' />
-        <input className='border p-3 rounded-lg' type='password' placeholder='password' id='password' />
+        <input className='border p-3 rounded-lg' type='text' placeholder='username' id='username' defaultValue={currentUser.username} onChange={handleChange}/>
+        <input className='border p-3 rounded-lg' type='email' placeholder='email' id='email'defaultValue={currentUser.email} onChange={handleChange}/>
+        <input className='border p-3 rounded-lg' type='password' placeholder='password' id='password' onChange={handleChange}/>
         <button className='bg-slate-700 text-white rounded-lg p-3 uppercase hover:opacity-90'>
           Update
         </button>
@@ -66,6 +113,8 @@ export default function About() {
         <span className='text-red-700 cursor-pointer'>Delete account</span>
         <span className='text-red-700 cursor-pointer'>Sign out</span>
       </div>
+      <p className='text-red-700'>{error ? error:'' }</p>
+      <p className='text-green-700'>{updateSuccess ? 'User is updated Successfully!':'' }</p>
     </div>
   );
 }
