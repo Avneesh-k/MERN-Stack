@@ -33,7 +33,7 @@ export default function About() {
       );
       const data = await response.json();
       setImage(data.secure_url); // Update profile pic on UI
-      console.log("Uploaded Image URL:", data.secure_url);
+      
 
       // 👉 You can now send `data.secure_url` to your backend to update DB
     } catch (err) {
